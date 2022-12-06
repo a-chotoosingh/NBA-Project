@@ -1,0 +1,273 @@
+---
+title: "NBA DS4A Project"
+author: "Bryan Chan and Chris Chotoosingh"
+date: "5/14/2022"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readxl)
+```
+
+1) Description and motivation behind the research question(s). Background of the data sets.
+
+The 2021-2022 NBA season was one like no other. It was the first full/”normal” season since the emergence of the COVID-19 pandemic, we saw teams make large strides to become championship contenders, and we witnessed young players’ transitions from raw prospects to bonafide superstars. With that being said, we wanted to conduct a thorough analysis of individual players’ and team statistics to see if we could find any trends in player performance, end-of-season awards, and the final playoff standings. 
+
+Our dataset contains all players in the NBA who played at least 15 games and 20 minutes per game during the season. The reasoning for this was that we wanted to only include players who were significant contributors throughout the season and to eliminate any players who were traded or signed with new teams towards the end of the season. 
+
+Throughout our analysis, we used both basic and advanced statistics to reach our findings. Some of the basic statistics that we used included points per game (PPG), rebounds per game (RPG), and assists per game (APG). Some of the advanced statistics that we used were offensive and defensive rating, usage percentage, versatility index,and turnover rate. All of these statistics are numerical variables. The two categorical variables used in this study were the team the player was on and the position the player plays. 
+
+```{r}
+# Filter applied to only show significant contributors during the season.
+library(tidyverse)
+NBA_old <- read_excel("C:/Users/achot/Downloads/final_NBA_project_dataset.xlsx")
+NBA<-NBA_old %>%
+  filter(GP > 15) %>%
+  filter(MPG > 20)
+NBA$Versatility_Index <- NBA$`Versatility Index`
+head(NBA)
+```
+
+2) Discussion of generalization, association vs. causation and uncertainty in the context of your 
+problem.
+
+
+Our unit of observation for this study are individual NBA players during the 2021 - 2022 season. For this study, our population would be the full roster of the NBA 2021 - 2022 season. Our sample for the study are NBA players during the 2021 - 2022 season who significantly contributed to their team. To accomplish this, we filtered out players who did not play at least 20 minutes per game, and players who had a GP under 15.
+
+When we conducted our analyses, we made sure to use simple random sampling in order to ensure that sampling bias was as reduced as possible. We also accounted for potential confounding variables in our analyses, for example we wanted to see if age could influence a player's performance per game. Our hypothesis was older players may not be able to score as many points per game, but could have a higher VI due to experience and higher basketball IQ compared to younger players.
+
+Finally we used bootstrapping techniques to assess uncertainty in our analysis.
+
+3) Exploratory analysis: For each research question, identify the right type of analyses 
+(univariate, bivariate or multivariate) and the type of variable. Use the right set of techniques 
+covered in part I of the course to summarize, visualize and comment on your findings.
+
+Exploratory Data Analysis
+
+Univariate Analysis
+
+Sports in general requires immense physical strength and endurance. The age of peak male muscle strength is around 25 years old. Does the average age of a player in the NBA match this parameter?
+
+```{r}
+hist(NBA$AGE, main = "Average NBA Player Age", breaks = 20,
+     xlab = "Player Age",
+     col = "red")
+mean(NBA$AGE)
+median(NBA$AGE)
+```
+
+The histogram is slightly skewed to the right. Mean age of the players of the 2021 - 2022 season was 26.98 and median age was 26.47. This is close to the hypothesized average and median ages.
+
+Assess Uncertainty with Bootstrap:
+```{r}
+crimson = '#b31b1b'   #crimson
+lightGray = '#cecece' #lightGray
+darkGray = '#606366'  #darkGray
+skyBlue = '#92b2c4'   #skyblue
+gold = '#fbb040'      #gold
+ecBlack = '#393f47'   #ecBlack
+
+# Set seed to control randomness
+set.seed(1)
+
+# Rest of code:
+B = 10000   # Number of bootstrap samples to draw
+store_median = rep(0, B) # Vector to store B medians
+
+# For loop to draw B bootstrap samples
+for (n in 1:B){
+  # Random sample of 98 values
+  boot.id = sample(1:173, size = 173, replace = TRUE) 
+  # Create bootstrap sample from the NBA data
+  NBA.boot = NBA[boot.id,] 
+  # Store sample median of the bootstrapped data in 
+  # row n of the store_median vector.
+  store_median[n] = median(NBA.boot$AGE) 
+} # End for loop
+
+# Create a histogram of B median values: 
+hist(store_median, breaks = 10, freq = FALSE, col = "red",
+     border ='white', 
+     main = 'Bootstrap Distribution of Median NBA Players Age',
+     xlab = 'Median AGE')
+
+head(store_median)
+```
+
+
+
+95% Confidence Interval:
+```{r}
+# Calculate the confidence interval:
+ci.95 = quantile(store_median, probs = c(0.025, 0.975)) 
+ci.95
+# Plot the confidence interval on the histogram
+hist(store_median, breaks = 20, freq = FALSE, col = "red",
+    border ='white', main = 'Bootstrap Distribution of Median AGE',
+    xlab = 'Median AGE')
+abline(v = ci.95, col = "blue", lwd = 4, lty = 2)
+```
+
+We are 95% confident that the median AGE of a NBA player is between 25.49 and 27.94 (in years). 
+
+
+Bivariate Analysis: How does a player's versatility index affect how many points they score per game? How many points do each position score per game on average?
+
+Population: All NBA players 
+
+Sample: NBA players who played at least 15 games and at least 20 mintues per game during the season. 
+
+Unit of Observation: One NBA player
+
+```{r}
+plot(NBA$`Versatility Index`, NBA$PPG, main = "Versatility Index on Points Per Game",
+        xlab = "Versatility Index",
+        ylab = "Points per Game",
+        pch = 19)
+
+cor(NBA$`Versatility Index`, NBA$PPG)
+```
+
+From the scatterplot there seems to be a positive linear relationship between Versatility Index and Points Per Game. The Correlation test revealed a moderate positive relationship at .7272.
+
+```{r}
+boxplot(PPG ~ POS, data = NBA,
+        main = "Boxplot of Points per Game by Player Positions",
+        xlab = "Player Position",
+        ylab = "Points per Game",
+        col = "red")
+```
+
+The boxplots show variation between the 7 different positions in regards to points per game. They are summarized below:
+
+```{r}
+aggregate(PPG ~ POS, FUN = mean, data = NBA)
+```
+
+Multivariate Analysis
+
+Is there a correlation between Versatility Index and AGE?
+
+```{r}
+hist(NBA$Versatility_Index, breaks = 40,
+     main = "Versatility Index of NBA Players",
+     xlab = "Versatility Index",
+     col = "red")
+```
+
+Age can be a potential confounder in our analysis. How does age affect Versatility Index and Points Per Game (PPG)?
+
+```{r}
+
+NBA$AGE_TYPE <- NA
+NBA$AGE_TYPE[NBA$AGE < 27] = 'Below Mean Age'
+NBA$AGE_TYPE[NBA$AGE >= 27] = 'Above Mean Age'
+
+colorcode <- ifelse(NBA$AGE_TYPE == "Below Mean Age", "red", "blue")
+pchcode <- ifelse(NBA$AGE_TYPE == "Below Mean Age", 17, 19)
+
+plot(NBA$Versatility_Index, NBA$PPG,
+     col = colorcode,
+     pch = pchcode,
+     
+     xlab = "Versatility Index",
+     ylab = "Points per Game")
+
+legend("topleft", c("Below Mean Age", "Above Mean Age"),
+       pch = c(17, 19), col = c("red", "blue"))
+```
+
+```{r}
+cor(NBA$Versatility_Index[NBA$AGE_TYPE == 'Below Mean Age'],
+    NBA$PPG[NBA$AGE_TYPE == 'Below Mean Age'])
+
+cor(NBA$Versatility_Index[NBA$AGE_TYPE == 'Above Mean Age'],
+    NBA$PPG[NBA$AGE_TYPE == 'Above Mean Age'])
+```
+Question: How does offensive and defensive rating affect a player's playing time?
+
+```{r}
+NBA$Defensive_Rating <- NBA$`Defensive Rating`
+NBA$Offensive_Rating <- NBA$`Offensive Rating`
+off.def.mpg <- lm(MPG ~ Defensive_Rating + Offensive_Rating, data = NBA)
+off.def.mpg
+```
+
+For every one-point increase in defensive rating, minutes per game is expected to increase by 0.13.
+
+For every one-point increase in offensive rating, minutes per game is expected to increase by 0.01.
+
+Based on this multi-linear regression, we can say that being a better defensive player yields more minutes played. 
+
+Question: The Boston Celtics had the best team offensive and defensive rating in the NBA during the regular season, while the Houston Rockets had the worst team offensive and defensive rating. We want to compare individual  ratings from both teams to see how much of discrepancy there is between the two teams. 
+
+```{r}
+Celtics.Rockets<-NBA %>%
+  filter(TEAM == "Bos" | TEAM == "Hou")
+
+ggplot(data = Celtics.Rockets, aes(x = Offensive_Rating, y = Defensive_Rating, color = TEAM)) + labs(y= "Defensive Rating", x = "Offensive Rating", title = "Boston Celtics vs. Houston Rockets") +
+    geom_point(size = 4)
+```
+As seen in the scatterplot above, there is no overlap between the Celtics and the Rockets for defensive rating. It is important to note that it is better to have a higher offensive rating and a lower defensive rating. No Rockets player has a defensive rating lower than 105, where as every Celtics player has a defensive rating under 105. In terms of offensive rating, there is little overlap but that was expected. This is because offense is easier to achieve than defense. A mediocre player who is the best player on a bad team will have a higher offensive rating than a mediocre player who is an average player on a good team. However the Celtics do have three players over 120 offensive rating, whereas the Rockets only have one. 
+
+Our findings make sense when we compare them to how these two teams finished at the of the season. The Celtics finished with 51 wins and 31 losses, earning them second seed in the Eastern Conference, while the Rockets finished with 20 wins and 62 losses, which was the worst record in the NBA. 
+In this test we were curious about the relationship between offensive rating, defensive rating, and versatility index. We wanted to see if there was any association between high or low offensive and defensive rating and how high a player's versatility index was.
+
+```{r}
+"Versatility Rate, Offensive Rating, Defensive Rating" 
+library(scatterplot3d)
+
+x1 <- NBA$Offensive_Rating
+x2 <- NBA$Defensive_Rating
+y <- NBA$Versatility_Index
+
+s3d <- scatterplot3d(x1, x2, y,
+                     xlab = "Offensive Rating",
+                     ylab = "Defensive Rating",
+                     zlab = "Versatility Rating")
+
+fit.vis.inc <- lm(x1 ~ x2 + y, data = NBA)
+
+s3d$plane3d(fit.vis.inc)
+
+fit.vis.inc
+fit.vis.inc$coefficients[2]
+fit.vis.inc$coefficients[3]
+```
+
+Prediction Model: Predicted VI = 180.84135 - 0.62747 * Offensive Rating - 0.07225 * Defensive Rating
+
+Interpretation: Using the values returned by the linear model, we can make a prediction rule: The average versatility index decreases by -0.62747 for every additional point in offensive rating when the defensive rating is held constant.
+
+This means that the higher a player's offensive rating is, they tend to be slightly less versatile.
+
+T-test comparing means of usage rating between guards and forwards.
+
+```{r}
+t.test(x = NBA$UsageRate[NBA$POS == "G"],
+       y = NBA$UsageRate[NBA$POS == "F"],
+       alternative = "greater")
+```
+
+p-value = 0.003
+
+Since the p-value is less than 0.05, we reject the null hypothesis. There is convincing evidence that tells us that the difference in means of usage rate between guards and forwards is greater than zero. 
+
+Usage rate of guards is higher than the usage rate of forwards by 2.58. This makes sense because guards tend to be better shooters and have the ball in their hands more often than forwards and centers. This can be proven below when we compare the means of three point percentage for each position:
+
+```{r}
+mean(NBA$`3P%` [NBA$POS == "G"])
+mean(NBA$`3P%`[NBA$POS == "F"])
+mean(NBA$`3P%`[NBA$POS == "C"])
+```
+
+Summary: Prepare a comprehensive summary of your results that is accessible to someone with little to no background in data science. Highlight major findings and their importance, potential caveats and limitations of your data or analysis methods.
+
+Throughout our in-depth analysis of statistics from the 2021-22 NBA Season, the biggest finding was that the advanced statistics are better indicators of a good player than the basic statistics. During our analysis, we found that some of the basic stats, such as points-per-game (PPG), rebounds-per-game (RPG), or assists-per-game (APG) can sometimes be considered "empty stats". What do we mean by "empty stats"? What we mean is that average players who are the best players on bad teams can inflate those basic stats. Basic stats also do not take into account efficiency. If a player shoots 30 shots a game and only averages 20 PPG, they are an inefficient scorer, and not as good as a player that shoots 10-15 shots a game and scores 15 PPG. 
+
+Of the advanced statistics, we found that versatility index is the best indicator of a player. Versatility index shows how well a player adapts to various situations. A player with a high versatility index of 10 is considered an above average player. To put things into perspective, Nikola Jokic, a two-time NBA Most Valuable Player (MVP) Award recipient, had a VI of 17.3, which is more than 9 points higher than the league average. Players like Jokic contribute to their teams in multiple dimensions, whether it is scoring, defense, rebounding, or facilitating to their teammates. We also found that lower defensive and higher offensive ratings correlate towards higher versatility indexes. 
+
+Another interesting finding was that we were able to compare statistical performances across multiple teams. In this analysis, we highlighted the  Boston Celtics and the Houston Rockets. The Celtics outperformed the Rockets in all categories offensively and defensively. We were then able to associate these statistics to their win-loss records by the end of the season. 
